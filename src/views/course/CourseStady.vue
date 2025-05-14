@@ -1,14 +1,10 @@
 <script setup>
-import { ref,onMounted,shallowRef, markRaw } from 'vue';
+import { ref, onMounted, shallowRef, markRaw } from 'vue';
 import { useRoute } from 'vue-router';
-import VideoPage1 from '@/views/course/videopage/VideoPage1.vue';
-import VideoPage2 from '@/views/course/videopage/VideoPage2.vue';
 import ExamPage from '@/views/course/videopage/ExamPage.vue';
-import VideoPage3 from '@/views/course/videopage/VideoPage3.vue';
-import VideoPage4 from '@/views/course/videopage/VideoPage4.vue';
-import VideoPage5 from '@/views/course/videopage/VideoPage5.vue';
-import VideoPage6 from '@/views/course/videopage/VideoPage6.vue';
-import request from '@/utils/request'
+import DynamicVideoPage from '@/views/course/videopage/VideoPage1.vue';
+import request from '@/utils/request';
+
 const route = useRoute();
 const courseId = route.params.courseId; // 从路由参数获取课程ID
 
@@ -16,14 +12,15 @@ const courseId = route.params.courseId; // 从路由参数获取课程ID
 const directoryItems = ref([]);
 const loading = ref(true);
 const collapsedItems = ref([]); // 存储被折叠的目录ID
-const currentVideoComponent = shallowRef(markRaw(VideoPage1));
-const courseDetails = ref({})
-const currentVideoUrl = ref('')|| ''
+const currentVideoComponent = shallowRef(markRaw(DynamicVideoPage));
+const courseDetails = ref({});
+const currentVideoUrl = ref('') || '';
+const currentVideoTitle = ref('');
 const buildTree = (items, currentCourseId) => {
   // 获取当前课程的所有章节
   const courseChapters = items.filter(item => item.coursesId == currentCourseId);
-// 递归构建子章节树
-const buildChildren = (parentId) => {
+  // 递归构建子章节树
+  const buildChildren = (parentId) => {
     return courseChapters
       .filter(c => c.parentId === parentId)
       .map(chapter => ({
@@ -32,37 +29,21 @@ const buildChildren = (parentId) => {
         children: buildChildren(chapter.id)
       }));
   };
-   // 获取顶层章节（parentId为0）
-   const topLevels = courseChapters.filter(c => c.parentId === 0);
+  // 获取顶层章节（parentId为0）
+  const topLevels = courseChapters.filter(c => c.parentId === 0);
   
   // 为每个顶层章节构建完整树结构
   return topLevels.flatMap(root => buildChildren(root.id));
-  
-  
 };
+
 const fetchCourseDetails = async () => {
   try {
-    const response = await request.get(`edu/courses/${courseId}`)
-    courseDetails.value = response.data.data
+    const response = await request.get(`edu/courses/${courseId}`);
+    courseDetails.value = response.data.data;
   } catch (error) {
-    console.error('获取课程详情失败:', error)
+    console.error('获取课程详情失败:', error);
   }
-}
-const componentMap = {
-  // Java课程
-  8: markRaw(VideoPage1),  // GUI编程 -> 编写第一个Java程序
-  9: markRaw(VideoPage2), // GUI编程 -> 实现Java类继承
-  10: markRaw(VideoPage3), // Java章节二 -> GUI布局管理
-  11: markRaw(VideoPage4), // Java章节二 -> Swing组件编程
-  14: markRaw(ExamPage),
-  // C语言课程
-  12: markRaw(VideoPage5),  // C语言章节一 -> C语言介绍
-  13: markRaw(VideoPage6)  // C语言章节二 -> C语言基础语法
-
-
 };
-console.log(componentMap);
-
 // 获取目录数据
 const fetchDirectory = async () => {
   try {
@@ -70,7 +51,6 @@ const fetchDirectory = async () => {
     // 传入当前课程ID进行过滤
     directoryItems.value = buildTree(response.data.data, courseId);
     console.log(`${courseId}目录数据:`, directoryItems.value);
-    
   } catch (error) {
     console.error('获取目录失败:', error);
   } finally {
@@ -78,24 +58,29 @@ const fetchDirectory = async () => {
   }
 };
 
-
 // 处理目录项点击
-const handleDirectoryItemClick = (chapterId) => {
+const handleDirectoryItemClick = async (chapterId) => {
   console.log('当前点击的章节ID:', chapterId);
   const detail = courseDetails.value.eduCoursesDetailsList?.find(
     d => d.coursesChapterId === chapterId
-  )
-  console.log('课程详情列表:', courseDetails.value.eduCoursesDetailsList); 
+  );
+  
   if (detail) {
-    currentVideoUrl.value = detail.videoUrl
-    currentVideoComponent.value = componentMap[chapterId] || markRaw(VideoPage1)
+    currentVideoUrl.value = detail.videoUrl;
+    currentVideoTitle.value = detail.title || '视频课程';
+    // 如果是考试页面，使用ExamPage
+    if (detail.isExam) {
+      currentVideoComponent.value = markRaw(ExamPage);
+    } else {
+      // 否则使用通用的DynamicVideoPage
+      currentVideoComponent.value = markRaw(DynamicVideoPage);
+    }
   }
-
 };
 
 onMounted(() => {
   fetchDirectory();
-  fetchCourseDetails()
+  fetchCourseDetails();
 });
 
 // 折叠切换方法
@@ -107,6 +92,7 @@ const toggleCollapse = (id) => {
     collapsedItems.value.splice(index, 1);
   }
 };
+
 // 拖动功能相关代码
 const startResize = (e) => {
   const rightContainer = e.target.parentElement;
@@ -139,33 +125,38 @@ const startResize = (e) => {
       </div>
       
       <div class="directory-container">
-    <!-- 目录列表容器，用于展示目录项 -->
-    <ul v-if="!loading" class="directory-list">
-      <li v-for="section in directoryItems" :key="section.id" class="directory-item">
-        <div class="item-title" @click="toggleCollapse(section.id)">
-          <i class="fas fa-folder"></i> {{ section.title }}
-        </div>
-        
-        <ul v-if="section.children && !collapsedItems.includes(section.id)" class="sub-directory">
-          <li v-for="detail in section.children" 
-              :key="detail.id" 
-              class="sub-item"
-              @click="handleDirectoryItemClick(detail.id)">
-            <div class="item-title">
-              {{ detail.title }}
+        <!-- 目录列表容器，用于展示目录项 -->
+        <ul v-if="!loading" class="directory-list">
+          <li v-for="section in directoryItems" :key="section.id" class="directory-item">
+            <div class="item-title" @click="toggleCollapse(section.id)">
+              <i class="fas fa-folder"></i> {{ section.title }}
             </div>
+            
+            <ul v-if="section.children && !collapsedItems.includes(section.id)" class="sub-directory">
+              <li v-for="detail in section.children" 
+                  :key="detail.id" 
+                  class="sub-item"
+                  @click="handleDirectoryItemClick(detail.id)">
+                <div class="item-title">
+                  {{ detail.title }}
+                </div>
+              </li>
+            </ul>
           </li>
         </ul>
-      </li>
-    </ul>
-</div>
+      </div>
     </div>
 
-    <component :is="currentVideoComponent":videoUrl="currentVideoUrl" class="left-side"></component>
+    <component 
+    :is="currentVideoComponent" 
+    :videoUrl="currentVideoUrl"
+    :title="currentVideoTitle" 
+    class="left-side">
+  </component>
   </div>
 </template>
-<style>
 
+<style>
 /* 全局布局 */
 .app-container {
   margin-top: 5rem;
