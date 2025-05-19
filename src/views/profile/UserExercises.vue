@@ -18,9 +18,7 @@ const fetchExercises = async () => {
   error.value = null
   
   try {
-    const response = await request.get('edu/exercises/list',{
-      params: { pageNum:1,pageSize:10 },
-    })
+    const response = await request.get('edu/exercises/list')
     const data = response.data.rows
     exercises.value = data.map(item => ({
       id: item.exerciseId,
