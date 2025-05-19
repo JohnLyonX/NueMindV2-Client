@@ -6,6 +6,19 @@ const instance = axios.create({
     timeout: 30000,
     // headers: {'X-Custom-Header': 'foobar'}
   });
-
+instance.interceptors.request.use(
+  (config) => {
+    // 从 localStorage 中获取 token
+    const token = localStorage.getItem('token');
+    if (token) {
+      // 将 token 添加到请求头中
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default instance;

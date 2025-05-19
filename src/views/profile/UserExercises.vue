@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import request from '@/utils/request'
 
 const router = useRouter()
 const exercises = ref([])
@@ -8,61 +9,73 @@ const loading = ref(true)
 const error = ref(null)
 const hasNewExercise = ref(true)
 
+// 新增：用于存储定时器
+let fetchTimer = null
+
 // 获取练习列表
 const fetchExercises = async () => {
   loading.value = true
   error.value = null
   
   try {
-    // 实际项目中应该从API获取数据
-    // const response = await fetch('http://localhost:1024/dev-api/edu/user/exercises')
-    // const data = await response.json()
-    // exercises.value = data.data
-    
+    const response = await request.get('edu/exercises/list',{
+      params: { pageNum:1,pageSize:10 },
+    })
+    const data = response.data.rows
+    exercises.value = data.map(item => ({
+      id: item.exerciseId,
+      title: item.title,
+      course: item.description,
+      totalQuestions: 20, 
+      completedQuestions: item.status === 1 ? 20 : 0, 
+      score: item.status === 1 ? 100 : null, 
+      status: item.status === 1 ? 'completed' : 'not_started',
+      submissionTime: item.submissionTime
+    }))
     // 使用假数据
-    setTimeout(() => {
-      exercises.value = [
-        {
-          id: 1,
-          title: 'C语言基础练习 - 变量与数据类型',
-          course: 'C语言进阶课程',
-          totalQuestions: 20,
-          completedQuestions: 15,
-          score: 85,
-          status: 'in_progress',
-          submissionTime: '2025-05-15 14:30'
-        },
-        {
-          id: 2,
-          title: 'C语言进阶练习 - 指针操作',
-          course: 'C语言进阶课程',
-          totalQuestions: 25,
-          completedQuestions: 0,
-          score: null,
-          status: 'not_started',
-          submissionTime: null
-        }
-      ]
-      loading.value = false
-    }, 1000)
+    // fetchTimer = setTimeout(() => {
+    //   exercises.value = [
+    //     {
+    //       id: 1,
+    //       title: 'C语言基础练习 - 变量与数据类型',
+    //       course: 'C语言进阶课程',
+    //       totalQuestions: 20,
+    //       completedQuestions: 15,
+    //       score: 85,
+    //       status: 'in_progress',
+    //       submissionTime: '2025-05-15 14:30'
+    //     },
+    //     {
+    //       id: 2,
+    //       title: 'C语言进阶练习 - 指针操作',
+    //       course: 'C语言进阶课程',
+    //       totalQuestions: 25,
+    //       completedQuestions: 0,
+    //       score: null,
+    //       status: 'not_started',
+    //       submissionTime: null
+    //     }
+    //   ]
+    //   loading.value = false
+    // }, 1000)
+    loading.value = false
   } catch (err) {
     error.value = '获取练习数据失败，请稍后重试'
     loading.value = false
     console.error('获取练习数据失败:', err)
-  } finally {
-    loading.value = false
-    window.scrollTo(0, 0) // 新增：数据加载完成后滚动到顶部
   }
 }
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  if (fetchTimer) {
+    clearTimeout(fetchTimer)
+  }
+})
 
 // 获取新练习题
 const fetchNewExercises = async () => {
   try {
-    // 实际项目中应该从API获取新练习题
-    // const response = await fetch('http://localhost:1024/dev-api/edu/user/new-exercises')
-    // const data = await response.json()
-    // exercises.value = [...data.data, ...exercises.value]
-    
     // 使用假数据模拟新练习题
     const newExercise = {
       id: exercises.value.length + 1,
@@ -82,9 +95,45 @@ const fetchNewExercises = async () => {
   }
 }
 
-// 开始或继续练习
+// 新增：跳转到练习页面
 const startExercise = (exerciseId) => {
-  router.push(`/exercise/${exerciseId}`)
+  router.push({ name: 'ExerciseDetail', params: { id: exerciseId } })
+}
+
+// 新增：获取练习详情
+const fetchExerciseDetail = async (exerciseId) => {
+  try {
+    const response = await request.get(`edu/exercises/${exerciseId}`)
+    return response.data
+  } catch (err) {
+    console.error('获取练习详情失败:', err)
+    throw err
+  }
+}
+
+// 新增：获取练习题目
+const fetchExerciseQuestions = async (exerciseId) => {
+  try {
+    const response = await request.get(`edu/exercises/${exerciseId}/questions`)
+    return response.data
+  } catch (err) {
+    console.error('获取练习题目失败:', err)
+    throw err
+  }
+}
+
+// 新增：提交答案
+const submitAnswers = async (exerciseId, answers) => {
+  try {
+    const response = await request.post(`edu/exercises/${exerciseId}/answers`, {
+      student_id: localStorage.getItem('studentId'),
+      answers: answers
+    })
+    return response.data
+  } catch (err) {
+    console.error('提交答案失败:', err)
+    throw err
+  }
 }
 
 // 获取状态标签和颜色

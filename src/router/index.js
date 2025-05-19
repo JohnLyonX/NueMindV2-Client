@@ -53,6 +53,11 @@ const router = createRouter({
           component: () => import('../views/profile/UserExercises.vue')
         },
         {
+          path: 'exercises/:id',
+          name: 'ExerciseDetail',
+          component: () => import('../views/profile/ExerciseDetail.vue')
+        },
+        {
           path: 'exams',
           name: 'exams',
           component: () => import('../views/profile/UserExams.vue'),

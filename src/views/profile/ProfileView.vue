@@ -25,11 +25,11 @@ const navMenus = [
     label: '我的课程',
     icon: '📚'
   },
-  // {
-  //   key: 'exercises',
-  //   label: '我的练习',
-  //   icon: '✏️'
-  // },
+  {
+    key: 'exercises',
+    label: '我的练习',
+    icon: '✏️'
+  },
   {
     key: 'exams',
     label: '我的考试',
