@@ -8,31 +8,36 @@
       </div>
 
       <!-- 题目列表 -->
-      <div
-        v-for="(question, index) in questions"
-        :key="question.id"
-        class="question-item"
-        :ref="el => questionRefs[index] = el"
-      >
-        <p class="question-title">{{ index + 1 }}. {{ question.text }}</p>
-        <div class="option-list">
-          <label
-            v-for="option in question.options"
-            :key="option"
-            class="option-item"
+     <div class="question-panel">
+        <h2 class="panel-title">单选题</h2>
+        <div class="question-list">
+          <div
+            v-for="(question, index) in singleQuestions"
+            :key="'single-' + index"
+            class="question-item"
           >
-            <input
-              :type="question.type === 'single' ? 'radio' : 'checkbox'"
-              :name="'question-' + index"
-              :value="option"
-              v-model="answers[index]"
-              @change="markAnswered(index)"
-            />
-            <span>{{ option }}</span>
-          </label>
+            <h3 class="question-title">{{ index + 1 }}. {{ question.text }}</h3>
+            <div class="option-list">
+              <div
+                v-for="(option, optionIndex) in question.options"
+                :key="'option-' + optionIndex"
+                class="option-item"
+                :class="{ 'selected': answers[index] === optionIndex }"
+                @click="selectAnswer(index, optionIndex)"
+              >
+                <input
+                  type="radio"
+                  :name="'question-' + index"
+                  :value="optionIndex"
+                  v-model="answers[index]"
+                  hidden
+                />
+                <span>{{ option }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
       <!-- 交卷按钮 -->
       <div class="submit-container">
         <button class="submit-btn" @click="submitAnswers">交卷</button>
@@ -40,7 +45,7 @@
     </div>
 
     <!-- 右边题号导航 -->
-    <div class="question-panel">
+     <div class="question-panel">
       <h2 class="panel-title">单选题</h2>
       <div class="question-grid">
         <div
@@ -53,23 +58,7 @@
           }"
           @click="scrollToQuestion(index)"
         >
-          {{ index + 1 }}
-        </div>
-      </div>
-
-      <h2 class="panel-title mt-4">多选题</h2>
-      <div class="question-grid">
-        <div
-          v-for="(question, index) in multipleQuestions"
-          :key="'multiple-' + index"
-          class="question-number"
-          :class="{
-            'bg-blue-500 text-white': answered[singleQuestions.length + index],
-            'hover:bg-blue-100': !answered[singleQuestions.length + index]
-          }"
-          @click="scrollToQuestion(singleQuestions.length + index)"
-        >
-          {{ singleQuestions.length + index + 1 }}
+          {{ index + 1 }} (ID: {{ question.id }})
         </div>
       </div>
     </div>
@@ -77,58 +66,88 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import request from '@/utils/request';
+import { useRouter } from 'vue-router';
 
-const questions = ref([
-  ...Array.from({ length: 10 }, (_, i) => ({
-    id: i + 1,
-    text: '以下哪个选项是合法的C语言变量名？（单选题）',
-    type: 'single',
-    options: ['1abc', 'abc1', '_abc', 'a-b']
-  })),
-  ...Array.from({ length: 10 }, (_, i) => ({
-    id: i + 11,
-    text: '以下哪些是C语言的关键字？（多选题）',
-    type: 'multiple',
-    options: ['int', 'return', 'function', 'loop']
-  }))
-]);
-
-const answers = ref(
-  questions.value.map(q => (q.type === 'multiple' ? [] : null))
-);
-
-const answered = ref(Array(20).fill(false));
+const router = useRouter();
+const questions = ref([]);
+const answers = ref([]);
+const answered = ref([]);
 const questionRefs = ref([]);
 
-const singleQuestions = computed(() => questions.value.filter(q => q.type === 'single'));
-const multipleQuestions = computed(() => questions.value.filter(q => q.type === 'multiple'));
+const singleQuestions = computed(() => questions.value);
 
-function markAnswered(index) {
-  const val = answers.value[index];
-  if ((Array.isArray(val) && val.length > 0) || (!Array.isArray(val) && val !== null)) {
-    answered.value[index] = true;
-  } else {
-    answered.value[index] = false;
+const fetchExerciseQuestions = async (exerciseId) => {
+  try {
+    const correlationResponse = await request.get(`edu/correlation/list`, {
+      params: { exerciseId }
+    });
+    const correlationData = correlationResponse.data.rows;
+    const questionIds = correlationData.map(row => row.questionId);
+    const questionsData = [];
+    for (const id of questionIds) {
+      const questionResponse = await request.get(`edu/questions/${id}`);
+      questionsData.push(questionResponse.data);
+    }
+
+    return questionsData;
+  } catch (err) {
+    console.error('获取练习题目失败:', err);
+    throw err;
   }
+};
+onMounted(async () => {
+  try {
+    const exerciseId = router.currentRoute.value.params.id;
+    const questionsData = await fetchExerciseQuestions(exerciseId);
+    console.log('questionsData:', questionsData); // 调试数据
+    questions.value = questionsData.map(item => ({
+      id: item.data.questionId, 
+      text: item.data.questionText, 
+      options: [item.data.optionA, item.data.optionB, item.data.optionC, item.data.optionD] 
+    }));
+    console.log('questions:', questions); // 调试处理后的数据
+  } catch (error) {
+    console.error('Failed to fetch questions:', error);
+  }
+});
+function selectAnswer(questionIndex, optionIndex) {
+  answers.value[questionIndex] = optionIndex; // 保存用户选择的答案
+  markAnswered(questionIndex); 
 }
-
+function markAnswered(index) {
+  answered.value[index] = answers.value[index] !== null;
+}
 function scrollToQuestion(index) {
   questionRefs.value[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
-function submitAnswers() {
+const submitAnswers = async () => {
   const confirmed = window.confirm("确定要交卷吗？提交后将无法修改答案。");
   if (confirmed) {
-    const result = {
-      total: questions.value.length,
-      answeredCount: answered.value.filter(v => v).length,
-      answers: answers.value
-    };
-    console.log("提交成功：", result);
-    alert(`已交卷，您共作答 ${result.answeredCount} 题。`);
+    try {
+      const exerciseId = router.currentRoute.value.params.id;
+      // if(answers.value==0){
+
+      // } else if(){
+
+      // }else if(){
+
+      // }else{
+
+      // }
+      const response = await request.post(`edu/answers`, {
+        studentId: 100,
+        answers: answers.value
+      });
+      console.log("提交成功：", response.data);
+      alert(`已交卷，您共作答 ${answered.value.filter(v => v).length} 题。`);
+    } catch (err) {
+      console.error('提交答案失败:', err);
+      alert('提交答案失败，请稍后重试。');
+    }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -258,7 +277,7 @@ function submitAnswers() {
 /* 右侧题号导航样式保持不变 */
 .question-panel {
   width: 370px;
-  height: 37vh;
+  height: 20vh;
   background-color: #f9fafb;
   border-left: 1px solid #e5e7eb;
   padding: 1rem;
@@ -305,5 +324,14 @@ function submitAnswers() {
   background-color: #1e40af;
   color: white;
 }
-
+.option-item.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1e40af;
+}
+.option-item:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1e40af;
+}
 </style>

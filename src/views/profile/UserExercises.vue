@@ -29,6 +29,7 @@ const fetchExercises = async () => {
       score: item.status === 1 ? 100 : null, 
       status: item.status === 1 ? 'completed' : 'not_started',
       submissionTime: item.submissionTime
+      // timeLimit: item.timeLimit
     }))
     // 使用假数据
     // fetchTimer = setTimeout(() => {
