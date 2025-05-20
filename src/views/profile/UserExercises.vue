@@ -59,7 +59,7 @@ const fetchExercises = async () => {
     // }, 1000)
     loading.value = false
   } catch (err) {
-    error.value = '获取练习数据失败，请稍后重试'
+    error.value = '获取练习数据失败，请重新登錄'
     loading.value = false
     console.error('获取练习数据失败:', err)
   }

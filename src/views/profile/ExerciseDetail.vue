@@ -99,7 +99,7 @@ const fetchExerciseQuestions = async (exerciseId) => {
 };
 onMounted(async () => {
   try {
-    const exerciseId = router.currentRoute.value.params.id;
+    const exerciseId = parseInt(router.currentRoute.value.params.id);
     const questionsData = await fetchExerciseQuestions(exerciseId);
     console.log('questionsData:', questionsData); // 调试数据
     questions.value = questionsData.map(item => ({
@@ -126,20 +126,29 @@ const submitAnswers = async () => {
   const confirmed = window.confirm("确定要交卷吗？提交后将无法修改答案。");
   if (confirmed) {
     try {
-      const exerciseId = router.currentRoute.value.params.id;
-      // if(answers.value==0){
-
-      // } else if(){
-
-      // }else if(){
-
-      // }else{
-
-      // }
-      const response = await request.post(`edu/answers`, {
-        studentId: 100,
-        answers: answers.value
+      const exerciseId = parseInt(router.currentRoute.value.params.id);
+      const studentId = 100; 
+      const answerTime = new Date().toISOString();
+      const answersData = questions.value.map((question, index) => {
+        let selectedAnswer = '';
+        if (answers.value[index] === 0) {
+          selectedAnswer = 'A';
+        } else if (answers.value[index] === 1) {
+          selectedAnswer = 'B';
+        } else if (answers.value[index] === 2) {
+          selectedAnswer = 'C';
+        } else if (answers.value[index] === 3) {
+          selectedAnswer = 'D';
+        }
+        return {
+          studentId: studentId,
+          exerciseId: exerciseId,
+          questionId: question.id,
+          selectedAnswer: selectedAnswer,
+          answerTime: answerTime,
+        };
       });
+      const response = await request.post(`edu/answers`, answersData);
       console.log("提交成功：", response.data);
       alert(`已交卷，您共作答 ${answered.value.filter(v => v).length} 题。`);
     } catch (err) {
