@@ -18,45 +18,51 @@ const fetchExercises = async () => {
   error.value = null
   
   try {
-    const response = await request.get('edu/exercises/list')
-    const data = response.data.rows
-    exercises.value = data.map(item => ({
-      id: item.exerciseId,
-      title: item.title,
-      course: item.description,
-      totalQuestions: 20, 
-      completedQuestions: item.status === 1 ? 20 : 0, 
-      score: item.status === 1 ? 100 : null, 
-      status: item.status === 1 ? 'completed' : 'not_started',
-      submissionTime: item.submissionTime
-      // timeLimit: item.timeLimit
-    }))
-    // 使用假数据
-    // fetchTimer = setTimeout(() => {
-    //   exercises.value = [
-    //     {
-    //       id: 1,
-    //       title: 'C语言基础练习 - 变量与数据类型',
-    //       course: 'C语言进阶课程',
-    //       totalQuestions: 20,
-    //       completedQuestions: 15,
-    //       score: 85,
-    //       status: 'in_progress',
-    //       submissionTime: '2025-05-15 14:30'
-    //     },
-    //     {
-    //       id: 2,
-    //       title: 'C语言进阶练习 - 指针操作',
-    //       course: 'C语言进阶课程',
-    //       totalQuestions: 25,
-    //       completedQuestions: 0,
-    //       score: null,
-    //       status: 'not_started',
-    //       submissionTime: null
-    //     }
-    //   ]
-    //   loading.value = false
-    // }, 1000)
+    // 获取练习列表
+    const exercisesResponse = await request.get('edu/exercises/list')
+    const exercisesData = exercisesResponse.data.rows
+
+    // 获取分数列表
+    const scoresResponse = await request.get('edu/scores/list')
+    const scoresData = scoresResponse.data.rows
+
+    // 获取练习与题目的关联数据
+    const correlationResponse = await request.get('edu/correlation/list')
+    const correlationData = correlationResponse.data.rows
+        // 获取学生的答题记录
+    const answersResponse = await request.get('edu/answers/list')
+    const answersData = answersResponse.data.rows
+    const statusMap = {
+      0: 'not_started',
+      1: 'in_progress',
+      2: 'completed'
+    };
+    // 将练习列表和分数列表进行匹配
+    exercises.value = exercisesData.map(item => {
+      const score = scoresData.find(score => 
+        score.studentId === Number(localStorage.getItem('studentId')) && 
+        score.exerciseId === item.exerciseId
+      )
+      const totalQuestions = correlationData
+        .filter(corr => corr.exerciseId === item.exerciseId)
+        .length
+      const completedQuestions = answersData
+        .filter(answer => 
+          answer.studentId === Number(localStorage.getItem('studentId')) && 
+          answer.exerciseId === item.exerciseId
+        )
+        .length
+      return {
+        id: item.exerciseId,
+        title: item.title,
+        course: item.description,
+        totalQuestions: totalQuestions, 
+        completedQuestions: completedQuestions, 
+        score: score ? score.totalScore : null, 
+        status: statusMap[item.status] || 'not_started',
+        submissionTime: item.submissionTime
+      }
+    })
     loading.value = false
   } catch (err) {
     error.value = '获取练习数据失败，请重新登錄'
@@ -125,7 +131,7 @@ const fetchExerciseQuestions = async (exerciseId) => {
 const submitAnswers = async (exerciseId, answers) => {
   try {
     const response = await request.post(`edu/exercises/${exerciseId}/answers`, {
-      student_id: localStorage.getItem('studentId'),
+      studentId: localStorage.getItem('studentId'),
       answers: answers
     })
     return response.data

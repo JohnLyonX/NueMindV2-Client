@@ -3,8 +3,8 @@
     <!-- 左边答题区 -->
     <div class="answer-area">
       <div class="header-info">
-        <h1 class="chapter-title">章节名称：C语言基础</h1>
-        <p class="chapter-meta">题目数量：20题 ｜ 满分：100分 ｜ 作答时间：30分钟</p>
+        <h1 class="chapter-title">章节名称：{{ chapterTitle }}</h1>
+        <p class="chapter-meta">题目数量：{{ questionCount }}题 ｜ 满分：{{ totalScore }}分 ｜ 作答时间：{{ timeLimit }}分钟</p>
       </div>
 
       <!-- 题目列表 -->
@@ -45,7 +45,7 @@
     </div>
 
     <!-- 右边题号导航 -->
-     <div class="question-panel">
+     <div class="question-panel2">
       <h2 class="panel-title">单选题</h2>
       <div class="question-grid">
         <div
@@ -58,7 +58,7 @@
           }"
           @click="scrollToQuestion(index)"
         >
-          {{ index + 1 }} (ID: {{ question.id }})
+          {{ index + 1 }}
         </div>
       </div>
     </div>
@@ -76,6 +76,11 @@ const answers = ref([]);
 const answered = ref([]);
 const questionRefs = ref([]);
 
+const chapterTitle = ref(''); // 章节名称
+const questionCount = ref(0); // 题目数量
+const totalScore = ref(0); // 满分
+const timeLimit = ref(0); // 作答时间（分钟）
+
 const singleQuestions = computed(() => questions.value);
 
 const fetchExerciseQuestions = async (exerciseId) => {
@@ -90,7 +95,12 @@ const fetchExerciseQuestions = async (exerciseId) => {
       const questionResponse = await request.get(`edu/questions/${id}`);
       questionsData.push(questionResponse.data);
     }
-
+    const exerciseResponse = await request.get(`edu/exercises/${exerciseId}`);
+    const exerciseData = exerciseResponse.data.data;
+    chapterTitle.value = exerciseData.title || '未知章节';
+    questionCount.value = questionIds.length;
+    totalScore.value = correlationData.reduce((sum, row) => sum + row.score, 0);
+    timeLimit.value = exerciseData.timeLimit || 60;
     return questionsData;
   } catch (err) {
     console.error('获取练习题目失败:', err);
@@ -101,13 +111,13 @@ onMounted(async () => {
   try {
     const exerciseId = parseInt(router.currentRoute.value.params.id);
     const questionsData = await fetchExerciseQuestions(exerciseId);
-    console.log('questionsData:', questionsData); // 调试数据
+    // console.log('questionsData:', questionsData); // 调试数据
     questions.value = questionsData.map(item => ({
       id: item.data.questionId, 
       text: item.data.questionText, 
       options: [item.data.optionA, item.data.optionB, item.data.optionC, item.data.optionD] 
     }));
-    console.log('questions:', questions); // 调试处理后的数据
+    // console.log('questions:', questions); // 调试处理后的数据
   } catch (error) {
     console.error('Failed to fetch questions:', error);
   }
@@ -127,7 +137,7 @@ const submitAnswers = async () => {
   if (confirmed) {
     try {
       const exerciseId = parseInt(router.currentRoute.value.params.id);
-      const studentId = 100; 
+      const studentId = localStorage.getItem('studentId'); 
       const answerTime = new Date().toISOString();
       const answersData = questions.value.map((question, index) => {
         let selectedAnswer = '';
@@ -150,7 +160,13 @@ const submitAnswers = async () => {
       });
       const response = await request.post(`edu/answers`, answersData);
       console.log("提交成功：", response.data);
+      await request.put(`edu/exercises/`, {
+        exerciseId: exerciseId,
+        status: 2 
+        
+      });
       alert(`已交卷，您共作答 ${answered.value.filter(v => v).length} 题。`);
+      router.push('/profile/exercises');
     } catch (err) {
       console.error('提交答案失败:', err);
       alert('提交答案失败，请稍后重试。');
@@ -174,6 +190,7 @@ const submitAnswers = async () => {
   background-color: #ffffff;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  max-width: 50vw;
 }
 .answer-area::-webkit-scrollbar {
   display: none;
@@ -284,7 +301,8 @@ const submitAnswers = async () => {
 }
 
 /* 右侧题号导航样式保持不变 */
-.question-panel {
+
+.question-panel2 {
   width: 370px;
   height: 20vh;
   background-color: #f9fafb;
