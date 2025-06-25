@@ -16,6 +16,7 @@ const currentVideoComponent = shallowRef(markRaw(DynamicVideoPage));
 const courseDetails = ref({});
 const currentVideoUrl = ref('') || '';
 const currentVideoTitle = ref('');
+
 const buildTree = (items, currentCourseId) => {
   // 获取当前课程的所有章节
   const courseChapters = items.filter(item => item.coursesId == currentCourseId);
@@ -67,12 +68,10 @@ const handleDirectoryItemClick = async (chapterId) => {
   
   if (detail) {
     currentVideoUrl.value = detail.videoUrl;
-    currentVideoTitle.value = detail.title || '视频课程';
-    // 如果是考试页面，使用ExamPage
+    currentVideoTitle.value = detail.title || '';
     if (detail.isExam) {
       currentVideoComponent.value = markRaw(ExamPage);
     } else {
-      // 否则使用通用的DynamicVideoPage
       currentVideoComponent.value = markRaw(DynamicVideoPage);
     }
   }
@@ -93,33 +92,22 @@ const toggleCollapse = (id) => {
   }
 };
 
-// 拖动功能相关代码
-const startResize = (e) => {
-  const rightContainer = e.target.parentElement;
-  const startX = e.clientX;
-  const startWidth = rightContainer.offsetWidth;
-
-  const onMouseMove = (e) => {
-    const newWidth = startWidth - (e.clientX - startX);
-    rightContainer.style.width = `${newWidth}px`;
-  };
-
-  const onMouseUp = () => {
-    document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup', onMouseUp);
-  };
-
-  document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('mouseup', onMouseUp);
-};
 </script>
 
 <template>
   <div id="app" class="app-container">
     <div v-if="loading" class="loading">加载目录中...</div>
     
+    <div class="left-container">
+      <h2 class="video-title">{{ currentVideoTitle }}</h2>
+      <component 
+        :is="currentVideoComponent" 
+        :videoUrl="currentVideoUrl"
+        class="video-main-container">
+      </component>
+    </div>
+
     <div class="right-container">
-      <div class="resize-handle" @mousedown="startResize"></div>
       <div class="right-navbar">
         <div class="module-item">目录</div>
       </div>
@@ -146,122 +134,80 @@ const startResize = (e) => {
         </ul>
       </div>
     </div>
-
-    <component 
-    :is="currentVideoComponent" 
-    :videoUrl="currentVideoUrl"
-    :title="currentVideoTitle" 
-    class="left-side">
-  </component>
   </div>
 </template>
 
 <style>
-/* 全局布局 */
+/* 修改全局布局 */
 .app-container {
   margin-top: 5rem;
   display: flex;
-  flex-direction: row-reverse;
-  background-image: url(@/assets/coursestadys/灰色背景-001.png);
-}
-
-/* 左侧样式 */
-.left-side {
-  width: 95%;
-  padding: 20px;
-  box-sizing: border-box;
-  border-right: 2px dashed #333;
-  border-image: linear-gradient(
-    45deg,
-    transparent,
-    rgba(0,0,0,0.3),
-    transparent
-  ) 1;
-  border-right-style: dashed;
-}
-
-/* 视频页面的特定样式 */
-.video-page {
-  background-color: #eef7ffe0; /* 浅蓝色背景 */
-  border-right-color: #007bff; /* 蓝色边框 */
-  border-radius: 2%;
-}
-
-.video-player {
   width: 100%;
-  margin-bottom: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  height: calc(100vh - 5rem);
 }
 
-.text-intro {
-  line-height: 1.6;
-  color: #343a40;
+/* 修改视频标题样式 */
+.video-title {
+  width: 100%;
+  text-align: center;
+  color: #2c3e50;
+  font-size: 28px;
+  font-weight: bold;
+  padding: 15px;
+  margin-bottom: 0;
 }
 
-/* 右侧整体样式 */
-.right-container {
-  width: 25%;
+.left-container {
+  width: 80%;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
   height: 100%;
-  padding-left: 8px;
-  min-width: 18px;
+}
+
+/* 修改后的视频容器样式 - 加长高度 */
+.video-main-container {
+  width: 100%;
+  height: 90vh;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #f8f9fa;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding-top: 0;
+}
+
+/* 修改右侧容器样式 - 保持固定位置 */
+.right-container {
+  width: 20%;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 5rem);
+  padding: 15px;
   background-color: #f8f9fa;
   box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
   position: fixed;
+  right: 0;
+  top: 5rem;
+  overflow-y: auto;
 }
 
-/* 右侧顶部导航栏样式 */
 .right-navbar {
-  height: 40px;
-  display: flex;
-  justify-content: space-around;
-  padding: 3px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.module-item {
-  height: 25px;
-  line-height: 25px;
-  padding: 0 15px;
-  cursor: pointer;
-  transition: background-color 0.3s, transform 0.3s, color 0.3s;
-  white-space: nowrap;
-  border-radius: 4px;
+  padding: 10px 15px;
+  font-size: 18px;
   font-weight: bold;
   color: #333;
+  border-bottom: 1px solid #eaeaea;
+  margin-bottom: 10px;
 }
 
-.module-item:hover,
-.module-item.active {
-  background-color: #e9ecef;
-  transform: scale(1.05);
-  color: #007bff;
-}
-
-/* 添加动画效果 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.module-item {
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-/* 右侧目录区样式 */
 .directory-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
+  padding: 0 10px;
 }
 
 .directory-list {
@@ -270,81 +216,52 @@ const startResize = (e) => {
   margin: 0;
 }
 
-.directory-item {
-  margin-bottom: 10px;
+.directory-item, .sub-item {
+  margin-bottom: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .item-title {
   padding: 8px 12px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s;
   display: flex;
   align-items: center;
 }
 
-.item-title i {
-  margin-right: 8px;
-  color: #007bff;
+.item-title:hover {
+  background-color: #e9ecef;
 }
 
-.item-title:hover {
-  background-color: #f8f9fa;
+.directory-item > .item-title {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.sub-item > .item-title {
+  color: #495057;
+  padding-left: 30px;
+}
+
+.sub-item > .item-title:hover {
+  background-color: #e9ecef;
+  color: #2c3e50;
 }
 
 .sub-directory {
   list-style: none;
-  padding-left: 20px;
-  margin: 5px 0 0 0;
+  padding-left: 15px;
+  margin-top: 5px;
 }
 
-.sub-item {
-  padding: 6px 10px;
-  cursor: pointer;
-  transition: background-color 0.3s;
+.fas {
+  margin-right: 8px;
+  color: #6c757d;
+  transition: transform 0.2s ease;
 }
 
-.sub-item:hover {
-  background-color: #f8f9fa;
-}
-
-/* 滚动条样式优化 */
-.directory-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.directory-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.directory-container::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
-}
-
-.directory-container::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* 拖动区域样式 */
-.resize-handle {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: col-resize;
-  background-color: #ccc;
-}
-/* 添加加载状态样式 */
-.loading {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 1rem 2rem;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  border-radius: 4px;
-  z-index: 1000;
+.collapsed .fas {
+  transform: rotate(90deg);
 }
 </style>

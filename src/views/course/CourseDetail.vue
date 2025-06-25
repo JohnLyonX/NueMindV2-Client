@@ -159,7 +159,7 @@ onMounted(() => {
     <div class="action-bar">
       <div class="price">告知:"现所有课程免费学习！！！！"</div>
       <button class="enroll-button"><router-link :to="`/courseStudy/${courseDetail.id}`">点击学习</router-link></button>
-      <button class="preview-button">领取课件</button>
+      <!-- <button class="preview-button">领取课件</button> -->
     </div>
   </div>
 </template>
@@ -381,6 +381,8 @@ onMounted(() => {
   align-items: center;
   gap: 20px;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  /* 靠左20px */
+  
 }
 
 .price {

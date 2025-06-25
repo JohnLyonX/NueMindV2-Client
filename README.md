@@ -26,4 +26,12 @@ npm run dev
 
 ```sh
 npm run build
+
 ```
+//player.bilibili.com/video/BV17F411T7Ao/?p=7&share_source=copy_web&vd_source=5c169ece7381ca12debb4b56563cf383
+
+
+//player.bilibili.com/player.html?isOutside=true&aid=114369274842923&bvid=BV1zVLcz4E2z&cid=29516304217&p=1
+
+
+

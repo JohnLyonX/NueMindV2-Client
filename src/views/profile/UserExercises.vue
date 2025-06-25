@@ -59,6 +59,7 @@ const fetchExercises = async () => {
         totalQuestions: totalQuestions, 
         completedQuestions: completedQuestions, 
         score: score ? score.totalScore : null, 
+        totalScore: score ? Math.round(score.totalScore * (totalQuestions / 100)) : 0, // 新增：计算总成绩
         status: statusMap[item.status] || 'not_started',
         submissionTime: item.submissionTime
       }
@@ -153,6 +154,7 @@ const getStatusInfo = (status) => {
 
 // 计算进度百分比
 const getProgress = (completed, total) => {
+  if (total === 0) return 0  // 新增：当总题目数为0时，返回0
   return Math.round((completed / total) * 100)
 }
 
@@ -196,7 +198,9 @@ onMounted(() => {
         <div class="exercise-progress">
           <div class="progress-info">
             <span>完成进度: {{ exercise.completedQuestions }}/{{ exercise.totalQuestions }}</span>
-            <span v-if="exercise.score !== null">得分: {{ exercise.score }}</span>
+            <span v-if="exercise.score !== null">总成绩: {{ exercise.score }}分</span>
+            <!-- 新增：显示总成绩 -->
+            <!-- <span>总成绩: {{ exercise.totalScore || 0 }}</span> -->
           </div>
           <div class="progress-bar">
             <div 
@@ -312,6 +316,7 @@ onMounted(() => {
   margin-bottom: 8px;
   font-size: 14px;
   color: #666;
+  gap: 16px;
 }
 
 .progress-bar {
@@ -319,6 +324,7 @@ onMounted(() => {
   background: #f0f0f0;
   border-radius: 3px;
   overflow: hidden;
+  position: relative;
 }
 
 .progress-inner {
@@ -326,6 +332,7 @@ onMounted(() => {
   background: #1890ff;
   border-radius: 3px;
   transition: width 0.3s ease;
+  min-width: 6px; /* 确保即使进度很小也能看到 */
 }
 
 .exercise-footer {

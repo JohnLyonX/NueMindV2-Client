@@ -99,7 +99,7 @@ onMounted(() => {
   if (props.subPath) {
     fileList.value.push({
       id: 2,
-      name: '我的作答',
+      name: `${getFileName(props.subPath)}`,
       url: props.subPath,
       type: 'submission'
     });
@@ -397,6 +397,10 @@ h3 {
 .file-name {
   flex-grow: 1;
   margin-right: 1rem;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .download-btn {
@@ -450,5 +454,4 @@ h2 {
   border-radius: 4px;
   object-fit: cover;
 }
-
 </style>
