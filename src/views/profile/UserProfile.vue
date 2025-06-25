@@ -11,7 +11,8 @@ import {
   LegendComponent,
   GridComponent,
 } from "echarts/components";
-import request from '@/utils/request'
+import { useProfileStore } from '@/store/profileStore'
+const profileStore = useProfileStore()
 
 const loading = ref(true)
 const error = ref(null)
@@ -187,105 +188,12 @@ const studyOverviewOption = ref({ // 改为响应式对象
   animation: true,
   animationEasing: 'elasticOut',
 })
-
-const fetchData = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
-
-    request.get('edu/student/list', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      }
-    })
-    .then(response => {
-      // console.log('学生列表数据:', response.data.rows);
-      const targetStudent = response.data.rows.find(item => 
-        item.phoneNumber === username 
-      );
-      console.log('找到的学生:', targetStudent);
-      localStorage.setItem('avatarUrl',targetStudent.url)
-      if (targetStudent) {
-        request.get(`edu/student/${targetStudent.id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then(response => {
-          const studentDetail = response.data.data.eduStudentDetailsList[0];
-          console.log('学生详情:', studentDetail);
-          localStorage.setItem('studentId', studentDetail.studentId);
-          localStorage.setItem('name', targetStudent.name);
-          // 基本信息
-          userProfile.value = {
-            basicInfo: {
-              name: targetStudent.name || '未填写',
-              studentId: studentDetail.studentId || '未填写',
-              gender: targetStudent.sex === '0' ? '女' : '男',
-              age: studentDetail.age || '未填写',
-              email: studentDetail.email || '未填写',
-              phone: targetStudent.phoneNumber || '未填写'
-            },
-            education: {
-              school: studentDetail.school || '未填写',
-              major: studentDetail.major || '未填写',
-              grade: studentDetail.grade || '未填写',
-              class: studentDetail.classinfo || '未填写'
-            },
-            stats: {
-              coursesCount: 2, // 根据实际接口补充
-              exercisesCount: 35,
-              examCount: 2,
-              averageScore: 78
-            }
-          };
-          // 分析数据
-          learningData.value = {
-            personalAnalysis: {
-              learningAbility: studentDetail.studyAbility || 0,
-              logicalThinking: studentDetail.thinkingAbility || 0,
-              codingSpeed: studentDetail.codeAbility || 0
-            },
-            learningTips: generateLearningTips(studentDetail)
-          };
-          // 分析图表
-          analysisOption.value.series[0].data = [
-            studentDetail.codeAbility || 0,
-            studentDetail.studyAbility || 0,
-            studentDetail.thinkingAbility || 0
-          ];
-        })
-        .catch(error => {
-          console.error('请求失败:', error);
-        });
-      } else {
-        error.value = '未找到匹配的学生信息';
-        console.error('未找到匹配的学生信息');
-      }
-    })
-    .catch(error => {
-      console.error('请求失败:', error);
-    });
-  } catch (err) {
-    error.value = '数据加载失败，请检查网络连接';
-    console.error('API Error:', err);
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(fetchData)
-
-const generateLearningTips = (data) => {
-              const tips = [];
-              if (data.codeAbility < 40) tips.push("建议加强代码实践练习，每日至少完成2道编程题");
-              if (data.studyAbility < 60) tips.push("推荐使用番茄工作法提升学习效率");
-              if (data.thinkingAbility < 50) tips.push("每周进行逻辑思维训练，建议完成3道算法题");
-              return tips.length > 0 ? tips : ["各项能力均衡，继续保持！"];
-            }
-            
-            
-
+onMounted(() => {
+  userProfile.value = profileStore.userProfile
+  learningData.value = profileStore.learningData
+  analysisOption.value.series[0].data = profileStore.analysisOption.series[0].data
+  loading.value = false
+})
 </script>
 
 <template>
@@ -389,11 +297,7 @@ const generateLearningTips = (data) => {
   <div class="chart-item dashboard-card learning-tips">
           <h3 class="card-title">学习建议</h3>
           <div class="tips-list">
-            <div
-              v-for="(tip, index) in learningData.learningTips"
-              :key="index"
-              class="tip-item"
-            >
+            <div v-for="(tip, index) in learningData.learningTips" :key="index" class="tip-item">
               <span class="tip-icon">💡</span>
               <span class="tip-text">{{ tip }}</span>
             </div>

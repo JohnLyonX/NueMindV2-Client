@@ -1,18 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted,onUnmounted,watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-
+import { useProfileStore } from '@/store/profileStore'
+import { storageAvatar } from '@/utils/storageAvatar'
+const profileStore = useProfileStore()
 const router = useRouter()
 const route = useRoute()
 
-
-// 用户信息
+const loading = ref(true)
 const userInfo = ref({
-  avatar: localStorage.getItem('avatarUrl') || '/src/assets/aw.jpeg',
-  name: localStorage.getItem('name') || '  ', // 添加默认值"用户"
+  avatar: '',
+  name: '',
   role: '学生'
 })
-
+// 用户信息
+watchEffect(() => {
+  userInfo.value = {
+    avatar: storageAvatar.getAvatar(),
+    name: profileStore.userProfile.basicInfo?.name,
+    role: '学生'
+  }
+})
 // 导航菜单配置
 const navMenus = [
   {
@@ -55,18 +63,41 @@ const handleMenuClick = (key) => {
   currentMenu.value = key
   router.push({ name: key })
 }
+onMounted(async () => {
+  console.log('开始加载用户数据')
+  try {
+    await profileStore.fetchData()
+    console.log('用户数据加载完成', profileStore.userProfile)
+    loading.value = false
+  } catch (err) {
+    console.error('加载失败:', err)
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <div class="profile-container">
+  <div v-if="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <span>加载用户信息...</span>
+  </div>
+  <div v-else class="profile-container">
     <!-- 左侧导航栏 -->
     <div class="nav-sidebar">
       <!-- 用户信息区域 -->
       <div class="user-info">
         <div class="avatar-wrapper">
-          <img :src="userInfo.avatar" :alt="userInfo.name" class="avatar">
+          <img v-if="userInfo.avatar" 
+              :src="userInfo.avatar" 
+              :alt="userInfo.name"
+              class="avatar"
+              @error="handleImageError">
+          <div v-else class="avatar-placeholder"></div>
         </div>
-        <h2 class="username">{{ userInfo.name }}</h2>
+        <h2 class="username">
+          <template v-if="userInfo.name">{{ userInfo.name }}</template>
+          <span v-else class="placeholder">加载用户名...</span>
+        </h2>
         <p class="user-role">{{ userInfo.role }}</p>
       </div>
 
@@ -93,6 +124,24 @@ const handleMenuClick = (key) => {
 </template>
 
 <style scoped>
+.loading-spinner {
+  border: 3px solid rgba(0,0,0,0.1);
+  border-radius: 50%;
+  border-top-color: #1890ff;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 8px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.placeholder {
+  color: #999;
+  font-style: italic;
+}
+
 .profile-container {
     padding: 5rem .5rem;
   display: flex;
@@ -137,6 +186,13 @@ const handleMenuClick = (key) => {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
+}
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #f0f0f0;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
 }
 
 .username {

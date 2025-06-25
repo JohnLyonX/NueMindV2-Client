@@ -40,6 +40,10 @@ const handleNavClick = (path) => {
 const handleLogout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('name'); // 清除 token
+  localStorage.removeItem('avatarUrl');
+  localStorage.removeItem('stduentId');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('username');
   isLoggedIn.value = false;
   router.push('/login');
 };
